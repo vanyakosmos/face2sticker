@@ -1,14 +1,11 @@
 import enum
+import io
 import logging
 
-from time import sleep
-
-import io
-from telegram import Bot, Update, ChatAction, Message, ParseMode
+from telegram import Bot, ChatAction, Message, ParseMode, Update
 from telegram.ext import Filters
 
 from stickerizer import make_sticker
-
 from .decorators import command_setup, config, log
 
 
@@ -185,11 +182,10 @@ def add_stickers(bot: Bot, update: Update,
 
         sticker, emoji = make_sticker(bytes_array)
         bot.add_sticker_to_set(user_id=user_id, name=pack_name,
-                               png_sticker=sticker.getbuffer(),
+                               png_sticker=sticker,
                                emojis=emoji)
         sticker.close()
         bytes_array.close()
-        # sleep(5)
         status_update(bot, update, message=status_msg,
                       cur_photo=i + 1, photos_n=photos_n)
 
