@@ -1,11 +1,15 @@
 import enum
+import logging
 
 from time import sleep
 
-from telegram import Bot, Update, ParseMode, ChatAction
+from telegram import Bot, Update, ChatAction
 from telegram.ext import Filters
 
-from .decorators import command_setup, config
+from .decorators import command_setup, config, log
+
+
+logger = logging.getLogger(__name__)
 
 
 class Stage(enum.Enum):
@@ -22,14 +26,17 @@ def clear(update: Update, user_data: dict):
 
 
 @command_setup(name='start')
+@log
 def start(bot: Bot, update: Update):
     del bot
     msg = ('This bot can create sticker pack from your selfies.\n'
-           'Type "/create" to create new pack or "/edit" to edit existing one.')
-    update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+           'Type /create to create new pack or /edit to edit existing one.\n'
+           'Existing pack must be created by me and owned by you.')
+    update.message.reply_text(msg)
 
 
 @command_setup(name='create', pass_user_data=True)
+@log
 def create_pack(bot: Bot, update: Update, user_data: dict):
     del bot
     clear(update, user_data)
@@ -41,6 +48,7 @@ def create_pack(bot: Bot, update: Update, user_data: dict):
 
 
 @command_setup(name='edit', pass_user_data=True)
+@log
 def edit_pack(bot: Bot, update: Update, user_data: dict):
     del bot
     clear(update, user_data)
@@ -52,43 +60,62 @@ def edit_pack(bot: Bot, update: Update, user_data: dict):
     update.message.reply_text(msg)
 
 
-@config(filters=Filters.text, pass_user_date=True)
+@config(filters=Filters.text, pass_user_data=True)
+@log
+def text_handler(bot: Bot, update: Update, user_data: dict):
+    stage = user_data.get('stage', None)
+
+    if stage == Stage.WAIT_TITLE:
+        get_title(bot, update, user_data)
+
+    elif stage == Stage.WAIT_NAME:
+        get_name(bot, update, user_data)
+
+
+@config(filters=Filters.text, pass_user_data=True)
+@log
 def get_title(bot: Bot, update: Update, user_data: dict):
     del bot
     if user_data.get('stage', None) != Stage.WAIT_TITLE:
+        logger.debug("Didn't expected title.")
         return
 
     user_data['stage'] = Stage.WAIT_NAME
     title = update.message.text
     user_data['title'] = title
-    msg = (f'Using "{title}" as title for pack.\n'
-           f'Now provide short name for sticker pack. It must be unique for telegram and will be used in pack url.')
+    msg = (f'Pack title: "{title}".\n'
+           f'Now provide short name for sticker pack. '
+           f'It must be unique for telegram and will be used in pack url.')
     update.message.reply_text(msg)
 
 
-@config(filters=Filters.text, pass_user_date=True)
+@config(filters=Filters.text, pass_user_data=True)
+@log
 def get_name(bot: Bot, update: Update, user_data: dict):
     if user_data.get('stage', None) != Stage.WAIT_NAME:
+        logger.debug("Didn't expected name.")
         return
 
-    name = update.message.text
+    name = update.message.text.strip() + '_by_' + bot.username
 
     if user_data.get('edit', False):
         user_data['stage'] = Stage.WAIT_PHOTOS
-        msg = 'Got name.'
+        msg = f'Pack name: "{name}". Now send photos.'
 
     else:
         pack_created = bot.create_new_sticker_set(
             user_id=update.message.from_user.id,
             name=name,
             title=user_data.get('title',
-                                'Some default not empty name for sticker pack. Enjoy you lazy piece of shit!'),
+                                'Some default not empty name for sticker pack'),
             png_sticker=open('media/blank.png', 'rb'),
             emojis='🌚'
         )
+
         if pack_created:
             user_data['stage'] = Stage.WAIT_PHOTOS
-            msg = 'Successfully created pack. Now add send photos.'
+            msg = (f'Successfully created pack with name: "{name}".\n '
+                   f'Now send photos.')
         else:
             msg = ('Such name ("{}") already exists or it is not appropriate.\n'
                    'Try again...')
@@ -97,10 +124,12 @@ def get_name(bot: Bot, update: Update, user_data: dict):
     update.message.reply_text(msg)
 
 
-@config(filters=Filters.photo, pass_user_date=True)
+@config(filters=Filters.photo, pass_user_data=True)  # todo: add `| Filters.document`
+@log
 def get_photo(bot: Bot, update: Update, user_data: dict):
     del bot
     if user_data.get('stage', None) != Stage.WAIT_PHOTOS:
+        logger.debug("It's not time for photos...")
         return
 
     if user_data.get('photos', None) is None:
@@ -108,7 +137,7 @@ def get_photo(bot: Bot, update: Update, user_data: dict):
 
     message = update.message
 
-    # todo: accept files
+    # todo: accept documents
     if message.photo is None:
         update.message.reply_text('Waiting for photo...')
         return
@@ -119,18 +148,20 @@ def get_photo(bot: Bot, update: Update, user_data: dict):
     photo_num = len(user_data['photos'])
     msg = f'So far got {photo_num} photo(s).\n'
     if photo_num == 1:
-        msg += 'Type "/finish" to finish.'
+        msg += 'Type /finish to finish.'
 
     update.message.reply_text(msg)
 
 
 @command_setup(name='finish', pass_user_data=True)
+@log
 def finish(bot: Bot, update: Update, user_data: dict):
     if user_data.get('stage', None) != Stage.WAIT_PHOTOS:
+        logger.debug('Nothing to finish.')
         return
 
     bot.send_chat_action(chat_id=update.effective_chat.id,
-                         action=ChatAction.FIND_LOCATION)
+                         action=ChatAction.TYPING)
 
     # todo: make stickers...
     # todo: remove blank.png
@@ -150,7 +181,6 @@ command_handlers = [
 ]
 
 message_handlers = [
-    get_title,
-    get_name,
+    text_handler,
     get_photo,
 ]

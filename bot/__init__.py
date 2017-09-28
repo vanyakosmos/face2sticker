@@ -1,13 +1,15 @@
 import logging
 
 from telegram import Bot, Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler
 
 from config import DEBUG, BOT_TOKEN, PORT, APP_NAME
+import logs
 from .commands import command_handlers, message_handlers
 from .image_handler import image_handler
 
 
+logs.set_up(DEBUG)
 logger = logging.getLogger(__name__)
 
 

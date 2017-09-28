@@ -1,3 +1,7 @@
+from functools import wraps
+import logging
+
+
 def command_setup(name,
                   filters=None,
                   allow_edited=False,
@@ -25,7 +29,19 @@ def command_setup(name,
 
 def config(**kwargs):
     def decorator(func):
+        kwargs['callback'] = func
         func.get_config = lambda: kwargs
         return func
 
     return decorator
+
+
+def log(func):
+    logger = logging.getLogger(func.__module__)
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        logger.debug(f'Called ::{func.__name__}...')
+        return func(*args, **kwargs)
+
+    return wrapper
