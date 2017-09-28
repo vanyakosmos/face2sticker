@@ -3,8 +3,11 @@ import logging
 
 from time import sleep
 
-from telegram import Bot, Update, ChatAction
+import io
+from telegram import Bot, Update, ChatAction, Message, ParseMode
 from telegram.ext import Filters
+
+from stickerizer import make_sticker
 
 from .decorators import command_setup, config, log
 
@@ -137,6 +140,7 @@ def get_photo(bot: Bot, update: Update, user_data: dict):
 
     message = update.message
 
+    # todo: limit number of photos
     # todo: accept documents
     if message.photo is None:
         update.message.reply_text('Waiting for photo...')
@@ -153,6 +157,43 @@ def get_photo(bot: Bot, update: Update, user_data: dict):
     update.message.reply_text(msg)
 
 
+def status_update(bot: Bot, update: Update, message: Message or None, cur_photo, photos_n):
+    if cur_photo >= photos_n and message:
+        message.delete()
+        return None
+
+    cur_photo = str(cur_photo).rjust(len(str(photos_n)))
+    msg = f'`Processing status: [ {cur_photo} / {photos_n} ]`'
+
+    if message is None:
+        message = update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    else:
+        message = message.edit_text(msg, parse_mode=ParseMode.MARKDOWN)
+    bot.send_chat_action(chat_id=update.effective_chat.id,
+                         action=ChatAction.TYPING)
+    return message
+
+
+def add_stickers(bot: Bot, update: Update,
+                 user_id, pack_name,
+                 photos_ids, status_msg):
+    photos_n = len(photos_ids)
+    for i, photo_id in enumerate(photos_ids):
+        bytes_array = io.BytesIO()
+        file = bot.get_file(photo_id)
+        file.download(out=bytes_array)
+
+        sticker, emoji = make_sticker(bytes_array)
+        bot.add_sticker_to_set(user_id=user_id, name=pack_name,
+                               png_sticker=sticker.getbuffer(),
+                               emojis=emoji)
+        sticker.close()
+        bytes_array.close()
+        # sleep(5)
+        status_update(bot, update, message=status_msg,
+                      cur_photo=i + 1, photos_n=photos_n)
+
+
 @command_setup(name='finish', pass_user_data=True)
 @log
 def finish(bot: Bot, update: Update, user_data: dict):
@@ -160,17 +201,21 @@ def finish(bot: Bot, update: Update, user_data: dict):
         logger.debug('Nothing to finish.')
         return
 
-    bot.send_chat_action(chat_id=update.effective_chat.id,
-                         action=ChatAction.TYPING)
+    status_msg = status_update(bot, update, message=None,
+                               cur_photo=0, photos_n=len(user_data['photos']))
 
-    # todo: make stickers...
+    add_stickers(bot, update,
+                 user_id=update.message.from_user.id,
+                 pack_name=user_data['name'],
+                 photos_ids=user_data['photos'],
+                 status_msg=status_msg)
     # todo: remove blank.png
-    sleep(5)
 
     name = user_data['name']
     sticker = bot.get_sticker_set(name).stickers[0]
     update.message.reply_text('Enjoy!')
     update.message.reply_sticker(sticker)
+    user_data.clear()
 
 
 command_handlers = [

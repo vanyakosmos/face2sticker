@@ -6,7 +6,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler
 from config import DEBUG, BOT_TOKEN, PORT, APP_NAME
 import logs
 from .commands import command_handlers, message_handlers
-from .image_handler import image_handler
 
 
 logs.set_up(DEBUG)
@@ -28,8 +27,6 @@ def main():
     for handler in message_handlers:
         dp.add_handler(MessageHandler(**handler.get_config()))
 
-    # [dp.add_handler(c) for c in command_list]
-    # dp.add_handler(MessageHandler(Filters.photo, image_handler, pass_user_data=True))
     dp.add_error_handler(error)
 
     if DEBUG:
