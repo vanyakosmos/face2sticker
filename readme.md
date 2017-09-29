@@ -2,14 +2,36 @@
 
 some weird ass bot
 
-## Plan
+## Features
 
-- [ ] face/head/body (object) detection
+- [x] bot interface
+	- [x] creating pack
+	- [x] extending pack
+	- [x] deleting pack
+	
+
+- [ ] object detection
+	- [x] face detection
+	- [ ] body detection
+	
+
 - [ ] object crop
-	- [ ] naive rectangle crop (as test) 
+	- [x] rectangle crop
+	- [x] circle crop
+	- [ ] exact body outline crop (?)
+	
+	
 - [ ] associate emoji
-- [ ] associate meme
-- [ ] mix with meme (apply meme style)
-- [ ] outline
-	- [x] easy shape (as test)
-- [x] bot interface for adding, deleting and composing stickers
+	- [ ] find emotion
+	- [ ] map emotion to emoji
+	
+
+- [ ] mix with meme (apply meme style) (?)
+	- [ ] find emotion (again)
+	- [ ] find body parts positions
+	- [ ] associate meme (maybe be)
+	
+	
+- [ ] outline (?)
+
+(?) = questionable features
