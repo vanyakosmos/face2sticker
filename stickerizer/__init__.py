@@ -11,12 +11,11 @@ def make_stickers(image_bytes: io.BytesIO) -> Tuple[io.BytesIO, str]:
     :return: tuple of .png image buffer and associated emoji
     """
 
-    for face_image in detector.face_locations(image_bytes):
-        face_image = face_image.convert('L')
-        emoji = emojis.associate_emoji(face_image)
+    for image in features.crop_circle(image_bytes, scale=1.04, outline=True, outline_style=features.OUTLINE_RING):
         buff = io.BytesIO()
-        face_image.save(buff, format='PNG')
+        image.save(buff, format='PNG')
         buff.seek(0)
+        emoji = emojis.associate_emoji(image)
         yield buff, emoji
 
 
@@ -29,15 +28,7 @@ def main():
         image_bytes = io.BytesIO(image_file.read())
 
         # features.show_landmarks(image_bytes)
-
         # features.show_circle_crop(image_bytes)
-        index = 0
-        for image in features.crop_circle(image_bytes):
-            index += 1
-            image.save(out_path + '_' + str(index) + '.png')
-        # for sticker, emoji in make_stickers(bytes_arr):
-        #     features.save_image(sticker, out_path, ext='.png')
-        #     sticker.close()
 
         image_bytes.close()
 

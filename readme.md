@@ -32,6 +32,6 @@ some weird ass bot
 	- [ ] associate meme (maybe be)
 	
 	
-- [ ] outline (?)
+- [x] outline
 
 (?) = questionable features

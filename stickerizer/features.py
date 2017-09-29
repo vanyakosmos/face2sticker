@@ -1,11 +1,13 @@
-from io import BytesIO
-from os.path import join
 from collections import Counter
+from io import BytesIO
 
-import face_recognition
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image, ImageDraw, ImageOps
 
 from . import detector
+
+
+OUTLINE_RING = 0
+OUTLINE_MOON = 1
 
 
 def save_image(image: Image, folder_path: str, sup=Counter(), ext='.png'):
@@ -20,9 +22,9 @@ def calc_size(size):
     size = list(size)
     i, x = max(enumerate(size), key=lambda e: e[1])
     dif = 512 / x
-    size[i] = 512
+    size[i] = int(512)
     other_index = abs(i - 1)
-    size[other_index] = dif * size[other_index]
+    size[other_index] = int(dif * size[other_index])
     return size
 
 
@@ -45,11 +47,42 @@ def show_landmarks(image_bytes: BytesIO):
     im.show()
 
 
-def add_circle_outline(image: Image):
-    pass
+def change_bounds(bounds, x):
+    return [e + x for e in bounds[:2]] + [e - x for e in bounds[2:]]
 
 
-def crop_circle(image_bytes: BytesIO, add_outline=False):
+def arr_sub(arr, sub):
+    return [e - sub for e in arr]
+
+
+def add_outline(image: Image, t=10, style=OUTLINE_RING):
+    """
+    :param style:
+    :param image:
+    :param t: thickness in px
+    :return:
+    """
+    size = (512, 512)
+    outline = Image.new('L', size, color=0)
+
+    # moon-like style
+    draw = ImageDraw.Draw(outline)
+    bounds = (0, 0) + size
+    if style == OUTLINE_MOON:
+        # moon-like style
+        draw.ellipse(arr_sub(bounds, -1), fill=255)
+        draw.ellipse(arr_sub(bounds, t), fill=0)
+    else:
+        # ring
+        draw.ellipse(change_bounds(bounds, -1), fill=255)
+        draw.ellipse(change_bounds(bounds, t), fill=0)
+
+    outline = ImageOps.fit(outline, image.size, centering=(0.5, 0.5))
+    image.paste(outline, mask=outline)
+    return image
+
+
+def crop_circle(image_bytes: BytesIO, scale=1.03, outline=False, outline_style=1):
     image, landmarks = detector.face_landmarks(image_bytes)
 
     size = (512, 512)
@@ -62,7 +95,7 @@ def crop_circle(image_bytes: BytesIO, add_outline=False):
         x1, min_y = min(chin_points, key=lambda p: p[1])
         x2, max_y = max(chin_points, key=lambda p: p[1])
         center = (x2, min_y)
-        radius = (max_y - min_y) * 1.02
+        radius = (max_y - min_y) * scale
 
         bounds = [
             center[0] - radius,  # right
@@ -71,31 +104,15 @@ def crop_circle(image_bytes: BytesIO, add_outline=False):
             center[1] + radius,  # top
         ]
 
-        # new image cropped with bounds
         cropped = image.crop(bounds)
-        output = ImageOps.fit(cropped, mask.size, centering=(0.5, 0.5))
-        output.putalpha(mask)
-        yield sticker_resize(output)
+        mask = ImageOps.fit(mask, cropped.size, centering=(0.5, 0.5))
+        cropped.putalpha(mask)
+        cropped = sticker_resize(cropped)
+        if outline:
+            cropped = add_outline(cropped, style=outline_style)
+        yield cropped
 
 
 def show_circle_crop(image_bytes: BytesIO):
-    image, landmarks = detector.face_landmarks(image_bytes)
-
-    mask = Image.new('L', image.size, 0)
-    mask_draw = ImageDraw.Draw(mask)
-
-    for face in landmarks:
-        chin_points = face['chin']
-        x1, min_y = min(chin_points, key=lambda p: p[1])
-        x2, max_y = max(chin_points, key=lambda p: p[1])
-        center = (x2, min_y)
-        radius = (max_y - min_y) * 1.02
-
-        mask_draw.ellipse([
-            center[0] - radius,  # right
-            center[1] - radius,  # bot
-            center[0] + radius,  # left
-            center[1] + radius,  # top
-        ], fill=255)
-    image.putalpha(mask)
-    image.show()
+    for image in crop_circle(image_bytes, scale=1.04, outline=True):
+        image.show()
