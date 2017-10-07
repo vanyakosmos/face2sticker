@@ -1,4 +1,5 @@
 import logging
+from pprint import pformat
 
 from telegram import Bot, Update
 from telegram.ext import Updater, CommandHandler, MessageHandler
@@ -14,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 def error(bot: Bot, update: Update, err):
     del bot
-    logger.warning(f'Update:\b {update}\nCaused error:\n{err}')
+    upd = None if update is None else pformat(update.to_dict())
+    logger.error(f'Update:\n'
+                 f'{upd}\n'
+                 f'Caused error:\n')
+    logger.exception(err)
 
 
 def main():

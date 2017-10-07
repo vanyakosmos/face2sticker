@@ -41,7 +41,9 @@ def log(func):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        logger.debug(f'Called ::{func.__name__}...')
+        logger.debug(f'>> Called ::{func.__name__}')
+        logger.debug(f'\t\t\targs: {args}')
+        logger.debug(f'\t\t\tkwargs: {kwargs}')
         return func(*args, **kwargs)
 
     return wrapper
