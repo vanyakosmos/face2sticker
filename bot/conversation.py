@@ -1,8 +1,9 @@
 import logging
 import re
 from io import BytesIO
+from typing import Tuple
 
-from telegram import Bot, Update
+from telegram import Bot, ChatAction, Message, ParseMode, Update
 from telegram.error import BadRequest
 from telegram.ext import CommandHandler, ConversationHandler, Filters, MessageHandler
 
@@ -56,7 +57,7 @@ def name_handler(bot: Bot, update: Update, user_data: dict):
 
     long_name = len(name) > 64
     bad_typing = not re.match(r'^[a-zA-Z0-9_]+$', name)
-    not_unique = False  # todo
+    not_unique = False
 
     try:
         bot.get_sticker_set(name)
@@ -64,11 +65,18 @@ def name_handler(bot: Bot, update: Update, user_data: dict):
     except BadRequest as e:
         logger.debug(str(e))
 
-    if long_name or bad_typing or not_unique:
+    if not_unique:
+        update.message.reply_text('Pack with this name already exists.')
+        return NAME
+
+    if long_name:
+        update.message.reply_text('Name must be in range [1, 64] characters.')
+        return NAME
+
+    if bad_typing:
         update.message.reply_text(
             'Name can contain only english letters, digits and underscores '
-            'Must begin with a letter, can\'t contain consecutive underscores.\n'
-            '1-64 characters')
+            'Must begin with a letter, can\'t contain consecutive underscores.')
         return NAME
 
     user_data['name'] = name
@@ -122,6 +130,24 @@ def stickerize_photos(bot: Bot, update: Update, photos: list):
     logger.debug(f'Finished stickerization.')
 
 
+def status_update(bot: Bot, update: Update, prev: Message or None, ab: Tuple[int, int]):
+    a, b = ab
+    if a >= b and prev:
+        prev.delete()
+        return None
+
+    a = str(a).rjust(len(str(b)))
+    msg = f'<code>Processing: {a} / {b}</code>'
+
+    if prev is None:
+        prev = update.message.reply_text(msg, parse_mode=ParseMode.HTML)
+    else:
+        prev = prev.edit_text(msg, parse_mode=ParseMode.HTML)
+    bot.send_chat_action(chat_id=update.effective_chat.id,
+                         action=ChatAction.TYPING)
+    return prev
+
+
 @log
 def finish_command(bot: Bot, update: Update, user_data: dict):
     title, name, photos = user_data['title'], user_data['name'], user_data['photos']
@@ -130,10 +156,11 @@ def finish_command(bot: Bot, update: Update, user_data: dict):
         update.message.reply_text('No selfies - no stickers 😜')
         return PHOTO
 
-    first = True
+    index = 0
+    status_msg = None
     for file_id, emojis in stickerize_photos(bot, update, photos):
-        if first:
-            first = False
+        status_msg = status_update(bot, update, status_msg, (index + 1, len(photos)))
+        if index == 0:
             bot.create_new_sticker_set(user_id=update.message.from_user.id,
                                        name=name, title=title,
                                        png_sticker=file_id, emojis=emojis)
@@ -141,11 +168,13 @@ def finish_command(bot: Bot, update: Update, user_data: dict):
             bot.add_sticker_to_set(user_id=update.message.from_user.id,
                                    name=name,
                                    png_sticker=file_id, emojis=emojis)
+        index += 1
 
     sticker_set = bot.get_sticker_set(name)
 
     update.message.reply_text('Here you go!')
     update.message.reply_sticker(sticker_set.stickers[0])
+    user_data.clear()
     return ConversationHandler.END
 
 
