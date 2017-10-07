@@ -44,6 +44,8 @@ def log(func):
         logger.debug(f'>> Called ::{func.__name__}')
         logger.debug(f'\t\t\targs: {args}')
         logger.debug(f'\t\t\tkwargs: {kwargs}')
-        return func(*args, **kwargs)
+        result = func(*args, **kwargs)
+        logger.debug(f'\t\t\t{func.__name__} returned: {result}')
+        return result
 
     return wrapper

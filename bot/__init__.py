@@ -1,37 +1,59 @@
 import logging
-from pprint import pformat
 
-from telegram import Bot, Update
-from telegram.ext import Updater, CommandHandler, MessageHandler
+from telegram import Bot, ParseMode, Update
+from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
-from config import DEBUG, BOT_TOKEN, PORT, APP_NAME
 import logs
-from .commands import command_handlers, message_handlers
+from config import APP_NAME, BOT_TOKEN, DEBUG, PORT
+from .conversation import conversation_handler
+from .decorators import log
+from .utils import weighted_choice
 
 
 logs.set_up(DEBUG)
 logger = logging.getLogger(__name__)
 
+TITLE, NAME, PHOTO = range(3)
+
 
 def error(bot: Bot, update: Update, err):
-    del bot
-    upd = None if update is None else pformat(update.to_dict())
-    logger.error(f'Update:\n'
-                 f'{upd}\n'
-                 f'Caused error:\n')
     logger.exception(err)
+
+
+@log
+def start(bot: Bot, update: Update):
+    update.message.reply_text(
+        'This bot can create sticker pack from your selfies.\n'
+        '\n'
+        '/create - create new pack\n'
+        '/cancel - cancel pack creation\n'
+        '\n'
+        'If you want to <b>edit or delete</b> pack then ask @Stickers for help.',
+        parse_mode=ParseMode.HTML
+    )
+
+
+@log
+def sticker_handler(bot: Bot, update: Update):
+    messages = [
+        ('Cool sticker.', 5),
+        ('Nice one.', 5),
+        ('Majestic.', 5),
+        ('Marvellous.', 5),
+        ('I don\'t remember creating this one.', 5),
+        ('Actually I don\'t really like stickers and yet forced to create them... (help)', 1),
+    ]
+    msg = weighted_choice(messages)
+    update.message.reply_text(msg)
 
 
 def main():
     updater = Updater(BOT_TOKEN)
     dp = updater.dispatcher
 
-    for handler in command_handlers:
-        dp.add_handler(CommandHandler(**handler.get_config()))
-
-    for handler in message_handlers:
-        dp.add_handler(MessageHandler(**handler.get_config()))
-
+    dp.add_handler(CommandHandler('start', start))
+    dp.add_handler(MessageHandler(Filters.sticker, sticker_handler))
+    dp.add_handler(conversation_handler)
     dp.add_error_handler(error)
 
     if DEBUG:
