@@ -40,8 +40,8 @@ def sticker_handler(bot: Bot, update: Update):
         ('Nice one.', 5),
         ('Majestic.', 5),
         ('Marvellous.', 5),
-        ('I don\'t remember creating this one.', 5),
-        ('Actually I don\'t really like stickers and yet forced to create them... (help)', 1),
+        ("I don't remember creating this one.", 5),
+        ("Actually I don't like stickers and they force me to create them... (help)", 1),
     ]
     msg = weighted_choice(messages)
     update.message.reply_text(msg)
