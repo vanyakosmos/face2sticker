@@ -2,3 +2,7 @@
 
 *.png
 *.jpg
+
+emotion_clf/dataset
+clf.pkl
+*.dat
