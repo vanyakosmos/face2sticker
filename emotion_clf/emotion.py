@@ -14,7 +14,7 @@ emotions = ["anger", "contempt", "disgust", "fear", "happiness",
             "sadness", "surprise"]
 clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("emotion_clf/shape_predictor_68_face_landmarks.dat")
 # clf = SVC(kernel='linear', probability=True, tol=1e-3)
 
 
@@ -124,8 +124,8 @@ def learn_and_save(clf, clf_file_name='clf'):
     print('saved')
 
 
-def load_clf(clf_file_name='clf'):
-    return joblib.load(clf_file_name + '.pkl')
+def load_clf(clf_file_name='clf.pkl'):
+    return joblib.load(clf_file_name)
 
 
 def predict_probability(clf):
