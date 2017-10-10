@@ -1,13 +1,17 @@
 # face2sticker
 
-some weird ass bot
+Telegram bot which can create stickers (associated with emoji images) from selfies.
+
+Project consist from 3 modules:
+
+- bot
+- emoji classifier
+- stickerizer that crop images into stickers
 
 ## Features
 
 - [x] bot interface
 	- [x] creating pack
-	- [x] extending pack
-	- [x] deleting pack
 	
 
 - [ ] object detection
@@ -21,9 +25,9 @@ some weird ass bot
 	- [ ] exact body outline crop (?)
 	
 	
-- [ ] associate emoji
-	- [ ] find emotion
-	- [ ] map emotion to emoji
+- [x] associate emoji
+	- [x] find emotion
+	- [x] map emotion to emoji
 	
 
 - [ ] mix with meme (apply meme style) (?)

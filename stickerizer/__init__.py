@@ -2,6 +2,8 @@ import io
 from os.path import join
 from typing import Tuple
 
+from PIL import Image
+
 from . import features, emojis, detector
 
 
@@ -15,7 +17,7 @@ def make_stickers(image_bytes: io.BytesIO) -> Tuple[io.BytesIO, str]:
         buff = io.BytesIO()
         image.save(buff, format='PNG')
         buff.seek(0)
-        emoji = emojis.associate_emoji(image)
+        emoji = emojis.associate_emoji(image_bytes)
         yield buff, emoji
 
 
@@ -26,10 +28,10 @@ def main():
 
     with open(img_path, 'rb') as image_file:
         image_bytes = io.BytesIO(image_file.read())
-
-        # features.show_landmarks(image_bytes)
-        # features.show_circle_crop(image_bytes)
-
+        for buff, es in make_stickers(image_bytes):
+            im = Image.open(buff)
+            im.show()
+            print(es)
         image_bytes.close()
 
 
