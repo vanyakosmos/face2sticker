@@ -4,7 +4,8 @@ from typing import Tuple
 
 from PIL import Image
 
-from . import features, emojis, detector
+from . import cropper, emojis, detector
+from . import detector
 
 
 def make_stickers(image_bytes: io.BytesIO) -> Tuple[io.BytesIO, str]:
@@ -12,18 +13,16 @@ def make_stickers(image_bytes: io.BytesIO) -> Tuple[io.BytesIO, str]:
     :param image_bytes: photo bytes array that should be converted to sticker
     :return: tuple of .png image buffer and associated emoji
     """
-
-    for image in features.crop_circle(image_bytes, scale=1.04, outline=True, outline_style=features.OUTLINE_RING):
-        buff = io.BytesIO()
-        image.save(buff, format='PNG')
-        buff.seek(0)
-        emoji = emojis.associate_emoji(image_bytes)
-        yield buff, emoji
+    image, landmarks = detector.face_landmarks(image_bytes)
+    for face_landmarks in landmarks:
+        face_buffer = cropper.crop_circle(image, face_landmarks, outline=True)
+        ems = emojis.associate_emojis(face_landmarks)
+        yield face_buffer, ems
 
 
 def main():
-    img_name = 'girl1'
-    img_path = join('images', f'{img_name}.jpg')
+    img_name = 'dude5'
+    img_path = join('images', f'{img_name}.png')
     out_path = join('output', img_name)
 
     with open(img_path, 'rb') as image_file:

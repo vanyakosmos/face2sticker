@@ -1,21 +1,15 @@
 import glob
 import random
 
-import cv2
-import dlib
 import numpy as np
 import math
 from sklearn.svm import SVC
 from sklearn.externals import joblib
 
+from stickerizer.detector import face_landmarks
 
-emotions = ["anger", "contempt", "disgust", "fear", "happiness",
-            # "neutral",
-            "sadness", "surprise"]
-clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("emotion_clf/shape_predictor_68_face_landmarks.dat")
-# clf = SVC(kernel='linear', probability=True, tol=1e-3)
+
+emotions = ["anger", "contempt", "disgust", "fear", "happiness", "sadness", "surprise"]
 
 
 def get_files(emotion, train=0.8):  # Define function to get file list, randomly shuffle it and split 80/20
@@ -52,28 +46,16 @@ def make_sets(train=0.8):
 
 
 def populate(image_path, vectors, labels, index):
-    image = cv2.imread(image_path, cv2.IMREAD_COLOR)  # open image
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # convert to grayscale
-    clahe_image = clahe.apply(gray)
 
-    detections = detector(clahe_image, 1)  # Detect the faces in the image
-
-    for face_rect in detections:
-        landmarks = get_landmarks(image, face_rect)
-        vectors.append(landmarks)
-        labels.append(index)
-
-
-def get_landmarks(image, rect):
-    landmarks = []
-    shape = predictor(image, rect)  # Draw Facial Landmarks with the predictor class
-    for i in range(1, 68):  # Store X and Y coordinates in two lists
-        landmarks.append((
-            int(shape.part(i).x),
-            int(shape.part(i).y)
-        ))
-    landmarks = vectorize(landmarks)
-    return landmarks
+    with open(image_path) as image:
+        _, landmarks = face_landmarks(image.buffer)
+        for face_marks in landmarks:
+            marks = []
+            for points in face_marks.values():
+                marks.extend(points)
+            vector = vectorize(marks)
+            vectors.append(vector)
+            labels.append(index)
 
 
 def vectorize(landmarks):
@@ -147,8 +129,8 @@ def predict_probability(clf):
 
 
 def main():
-    clf = load_clf()
-    predict_probability(clf)
+    clf = SVC(kernel='linear', probability=True, tol=1e-3)
+    learn_and_save(clf, clf_file_name='clf2')
 
 
 if __name__ == '__main__':

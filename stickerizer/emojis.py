@@ -1,44 +1,30 @@
-import cv2
 import numpy as np
-from io import BytesIO
 
-from emotion_clf.emotion import load_clf, get_landmarks, detector, emotions, clahe
+from emotion_clf.emotion import load_clf, vectorize, emotions
 
 
-def associate_emoji(image_bytes: BytesIO):
-    emotions_prob = get_emotion(image_bytes)
-    emoji = map_emoji(emotions_prob)
+clf = load_clf('emotion_clf/clf2.pkl')
+
+
+def associate_emojis(face_landmarks):
+    emotions_probs = predict_probabilities(face_landmarks)
+    emoji = map_emoji(emotions_probs)
     return emoji
 
 
-def vectorize(image_bytes: BytesIO):
-    image = np.frombuffer(image_bytes.getbuffer(), dtype=np.uint8)
-    image = cv2.imdecode(image, cv2.IMREAD_UNCHANGED)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    clahe_image = clahe.apply(gray)
+def predict_probabilities(face_landmarks: dict):
+    landmarks = []
+    for points in face_landmarks.values():
+        landmarks.extend(points)
 
-    detections = detector(clahe_image, 1)  # Detect the faces in the image
-    vectors = []
-    for face_rect in detections:
-        landmarks = get_landmarks(image, face_rect)
-        vectors.append(landmarks)
-    return vectors
+    vector = vectorize(landmarks)
 
-
-def predict_probabilities(clf, image_bytes: BytesIO):
-    vectors = vectorize(image_bytes)
-
-    data = np.array(vectors)
+    data = np.array([vector])
     res = clf.predict_proba(data)[0]
     probs = {}
     for i, e in enumerate(emotions):
         probs[e] = res[i]
     return probs
-
-
-def get_emotion(image_bytes: BytesIO):
-    clf = load_clf('emotion_clf/clf.pkl')
-    return predict_probabilities(clf, image_bytes)
 
 
 def map_emoji(emotions_prob: dict):

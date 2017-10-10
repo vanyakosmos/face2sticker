@@ -4,5 +4,5 @@
 *.jpg
 
 emotion_clf/dataset
-clf.pkl
+*.pkl
 *.dat

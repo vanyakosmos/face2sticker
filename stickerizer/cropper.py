@@ -82,37 +82,34 @@ def add_outline(image: Image, t=10, style=OUTLINE_RING):
     return image
 
 
-def crop_circle(image_bytes: BytesIO, scale=1.03, outline=False, outline_style=1):
-    image, landmarks = detector.face_landmarks(image_bytes)
-
+def crop_circle(image, face_landmarks, scale=1.03, outline=False, outline_style=OUTLINE_RING):
     size = (512, 512)
     mask = Image.new('L', size, 0)
     mask_draw = ImageDraw.Draw(mask)
     mask_draw.ellipse((0, 0) + size, fill=255)
 
-    for face in landmarks:
-        chin_points = face['chin']
-        x1, min_y = min(chin_points, key=lambda p: p[1])
-        x2, max_y = max(chin_points, key=lambda p: p[1])
-        center = (x2, min_y)
-        radius = (max_y - min_y) * scale
+    chin_points = face_landmarks['chin']
+    x1, min_y = min(chin_points, key=lambda p: p[1])
+    x2, max_y = max(chin_points, key=lambda p: p[1])
+    center = (x2, min_y)
+    radius = (max_y - min_y) * scale
 
-        bounds = [
-            center[0] - radius,  # right
-            center[1] - radius,  # bot
-            center[0] + radius,  # left
-            center[1] + radius,  # top
-        ]
+    bounds = [
+        center[0] - radius,  # right
+        center[1] - radius,  # bot
+        center[0] + radius,  # left
+        center[1] + radius,  # top
+    ]
 
-        cropped = image.crop(bounds)
-        mask = ImageOps.fit(mask, cropped.size, centering=(0.5, 0.5))
-        cropped.putalpha(mask)
-        cropped = sticker_resize(cropped)
-        if outline:
-            cropped = add_outline(cropped, style=outline_style)
-        yield cropped
+    cropped = image.crop(bounds)
+    mask = ImageOps.fit(mask, cropped.size, centering=(0.5, 0.5))
+    cropped.putalpha(mask)
+    cropped = sticker_resize(cropped)
 
+    if outline:
+        cropped = add_outline(cropped, style=outline_style)
 
-def show_circle_crop(image_bytes: BytesIO):
-    for image in crop_circle(image_bytes, scale=1.04, outline=True):
-        image.show()
+    buff = BytesIO()
+    cropped.save(buff, format='PNG')
+    buff.seek(0)
+    return buff
