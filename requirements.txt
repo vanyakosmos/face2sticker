@@ -1,0 +1,6 @@
+python-telegram-bot
+python-dotenv
+face_recognition
+pillow
+numpy
+scikit-learn
