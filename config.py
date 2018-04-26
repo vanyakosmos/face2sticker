@@ -10,5 +10,5 @@ DEBUG = os.getenv('DEBUG', 'false').lower() in ('true', 'on', '+', 'enable', 'ye
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 
 # heroku
-APP_NAME = os.getenv('APP_NAME', 'dummy')
+APP_HOST = os.getenv('APP_HOST', 'example.com')
 PORT = int(os.getenv('PORT', '5000'))
